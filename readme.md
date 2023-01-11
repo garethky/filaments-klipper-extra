@@ -17,20 +17,25 @@ Clone this git repo to your printers home directory (e.g. /home/pi):
 git clone https://github.com/garethky/filaments-klipper-extra.git
 ```
 
-Then tell Moonraker's update manager about this plugin by 
+Then run the install script. The install script assumes that Klipper is also installed in your home directory under "klipper": `${HOME}/klipper`.
+
+```bash
+cd ~/filaments-klipper-extra
+./install.sh
+```
+
+Optionally you can tell Moonraker's update manager about this plugin by 
 adding this configuration block to the `moonraker.conf` of your printer:
 
 ```text
 [update_manager client Filaments]
 type: git_repo
+channel: dev
 path: ~/filaments-klipper-extra
 origin: https://github.com/garethky/filaments-klipper-extra.git
 install_script: install.sh
 managed_services: klipper
 ```
-
-The install script assumes that Klipper is also installed in your home directory under
-"klipper": `${HOME}/klipper`.
 
 ----
 
