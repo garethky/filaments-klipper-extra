@@ -132,6 +132,7 @@ The following information is available in the `filaments` object:
 
 # Use Cases
 
+## General Usage Notes
 Typically you set up filaments and then assign them to the extruder:
 
 ```
@@ -141,10 +142,18 @@ SETUP_FILAMENT NAME=PETG EXTRUDER=220 BED=65
 SET_FILAMENT NAME=PETG
 ```
 
-Once filament presets and assignments are remembered across printer restarts. 
+Once set, filament presets and assignments are remembered across printer restarts. 
 You can use this information in macros. Several macros are included to help 
 with the most common heating tasks. These macros contain checks to make sure 
 a filament preset is set and will abort any containing macro if it is not.
+
+The order in which filaments are created with `SETUP_FILAMENT` is preserved. 
+This might be a good ordering to display filament in a front end as it could
+represent a user's preferred ordering.
+
+Filament names are case preserving but case insensitive. `pla` and `PLA` refer
+ to the same preset but will be displayed as written. Whenever you run 
+`SETUP_FILAMENT` the case you set in the `NAME` parameter is saved.
 
 ## Filament Loading & Unloading
 A common printer task is loading and unloading filament. With an assigned 

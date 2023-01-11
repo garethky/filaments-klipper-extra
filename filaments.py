@@ -202,16 +202,21 @@ class FilamentPresets:
         return extruder, tool_index, preset
     
     def _copy_extra_fields(self, gcmd, preset):
-        raw_params = gcmd.get_raw_command_parameters()
-        for param_name, raw_value in raw_params:
+        raw_params = gcmd.get_command_parameters()
+        for param_name, raw_value in raw_params.items():
             param_key = param_name.lower()
             if param_key in self.protected_keys:
+                # protected keys are handled in the SET_FILAMENTS macro
                 continue
             try:
                 value = ast.literal_eval(raw_value)
-            except ValueError as e:
+                preset[param_key] = value
+            except ValueError as ve:
                 raise gcmd.error("Unable to parse '%s' as a Python literal"
-                                     % (value,))
+                                     % (str(raw_value),))
+            except SyntaxError as se:
+                raise gcmd.error("Unable to parse '%s' as a Python literal"
+                                     % (str(raw_value),))
 
     def get_status(self, eventtime):
         assignments = self._build_assignment_map()
@@ -254,7 +259,10 @@ class FilamentPresets:
     def cmd_DELETE_FILAMENT(self, gcmd):
         name = self._validate_name_param(gcmd)
         preset = self._find_preset(name)
-        if preset:
+        if preset is None:
+            raise gcmd.error("No filament preset named '%s' could be found"
+                                         % (name))
+        else:
             self._presets.remove(preset)
         self._save_presets()
     
@@ -295,47 +303,44 @@ class FilamentPresets:
     cmd_SET_FILAMENT_help = "SET_FILAMENT"
     def cmd_SET_FILAMENT(self, gcmd):
         name = self._validate_name_param(gcmd)
-        lower_name = name.lower()
         extruder, extruder_index = self._get_extruder_arg(gcmd)
-
-        # go through the list of presets and look for the one that matches:
-        filament_preset = None
-        for preset in self._presets:
-            if preset[self.name_key].lower() == lower_name:
-                filament_preset = preset
-                break
-        
+        filament_preset = self._find_preset(name)
         if filament_preset is None:
-            raise gcmd.error("No filament preset named '%s' could be found" % (name))
-        filament_preset = copy.deepcopy(filament_preset)
-        filament_preset.pop(self.assigned_to_key, None)
+            raise gcmd.error("No filament preset named '%s' could be found"
+                                         % (name))
         
         # wipe the extruder from the presets
         last_preset = self._remove_extruder(self._presets, extruder)
-        last_preset = copy.deepcopy(last_preset)
-        last_preset.pop(self.assigned_to_key, None)
+        last_preset_copy = None
+        if not last_preset is None:
+            last_preset_copy = copy.deepcopy(last_preset)
+            last_preset_copy.pop(self.assigned_to_key, None)
 
         # add the extruder to the list of extruders on the selected preset
         filament_preset[self.assigned_to_key].append(extruder)
+        preset_copy = copy.deepcopy(filament_preset)
+        preset_copy.pop(self.assigned_to_key, None)
         self._save_presets()
         self._call_macro(self._on_set_macro, {
             'EXTRUDER': extruder,
             'T': extruder_index,
-            'PRESET': preset,
-            'LAST_PRESET': last_preset
+            'PRESET': preset_copy,
+            'LAST_PRESET': last_preset_copy
         })
     
     cmd_UNSET_FILAMENT_help = "UNSET_FILAMENT"
     def cmd_UNSET_FILAMENT(self, gcmd):
         extruder, extruder_index = self._get_extruder_arg(gcmd)
         last_preset = self._remove_extruder(self._presets, extruder)
-        last_preset = copy.deepcopy(last_preset)
-        last_preset.pop(self.assigned_to_key, None)
+        last_preset_copy = None
+        if not last_preset is None:
+            last_preset_copy = copy.deepcopy(last_preset)
+            last_preset_copy.pop(self.assigned_to_key, None)
         self._save_presets()
         self._call_macro(self._on_unset_macro, {
             'EXTRUDER': extruder,
             'T': extruder_index,
-            'LAST_PRESET': last_preset
+            'LAST_PRESET': last_preset_copy
         })
 
     cmd_PREHEAT_help = "PREHEAT"
