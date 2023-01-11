@@ -30,8 +30,8 @@ adding this configuration block to the `moonraker.conf` of your printer:
 ```text
 [update_manager client Filaments]
 type: git_repo
-channel: dev
 path: ~/filaments-klipper-extra
+primary_branch: mainline
 origin: https://github.com/garethky/filaments-klipper-extra.git
 install_script: install.sh
 managed_services: klipper
