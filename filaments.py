@@ -211,10 +211,7 @@ class FilamentPresets:
             try:
                 value = ast.literal_eval(raw_value)
                 preset[param_key] = value
-            except ValueError as ve:
-                raise gcmd.error("Unable to parse '%s' as a Python literal"
-                                     % (str(raw_value),))
-            except SyntaxError as se:
+            except (ValueError, SyntaxError) as e:
                 raise gcmd.error("Unable to parse '%s' as a Python literal"
                                      % (str(raw_value),))
 
