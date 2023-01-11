@@ -1,13 +1,36 @@
-# ⚠️⚠️⚠️ WARNING ⚠️⚠️⚠️
-Status: Alpha
+## ⚠️⚠️⚠️ WARNING ⚠️⚠️⚠️
+### Status: Alpha
+
 This is new code and is not heavily tested. In particular I haven't tested the multi-tool code paths.
 Please file bugs on github.
 
 If you are interested in more general discussion join this thread: https://klipper.discourse.group/t/assigning-a-filament-aka-thermal-preset-to-an-extruder/5849
-
-----
+Thanks for taking a look.
 
 # Filaments - Filament Presets for Klipper
+
+# Installing
+
+Clone this git repo to your printers home directory (e.g. /home/pi):
+
+```bash
+git clone https://github.com/garethky/filaments-klipper-extra.git
+```
+
+Then tell Moonraker's update manager about this plugin by 
+adding this configuration block to the `moonraker.conf` of your printer:
+
+```text
+[update_manager client Filaments]
+type: git_repo
+path: ~/filaments-klipper-extra
+origin: https://github.com/garethky/filaments-klipper-extra.git
+install_script: install.sh
+managed_services: klipper
+```
+
+The install script assumes that Klipper is also installed in your home directory under
+"klipper": `${HOME}/klipper`.
 
 ----
 
@@ -65,8 +88,8 @@ of the extruder and is only required for multi-tool printers.
 filament preset, if any. The T parameter is the index of the extruder and is
 only required for multi-tool printers.
 
-#### SHOW_FILAMENT
-`SHOW_FILAMENT`: Prints the currently associated filament preset to the
+#### FILAMENT_STATUS
+`FILAMENT_STATUS`: Prints the currently associated filament preset to the
 console. If the printer is multi-tool it prints an entry for every extruder.
 
 #### LIST_FILAMENTS
@@ -266,8 +289,8 @@ using this technique.
 
 All of the klipper front ends allow you to run custom gcode when a preset is
 selected. But they don't pass any context information about the filament change
-so this feature is of limited value. Instead of this gode per-preset approach, 
-[filaments] supports 2 macros that are triggered when a filament is set or unset.
+so this feature is of limited value. Instead of this gcode per-preset approach, 
+[filaments] supports macros that are triggered when a filament is set or unset.
 These macros get passed useful context information about the filament change
 including the extruder, new filament preset and previous filament preset.
 
@@ -292,6 +315,6 @@ $ UNSET_FILAMENT
 ```
 
 I'm not super familiar with what people are using these gcode blocks for but
-hopefully this is more useful and maintainable. this also has the benefit of
+hopefully this is more useful and maintainable. This also has the benefit of
 working across all front ends hooked up to klipper without having to copy your
 gcode to multiple places.
