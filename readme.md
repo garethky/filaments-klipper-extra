@@ -70,8 +70,8 @@ only required for multi-tool printers.
 console. If the printer is multi-tool it prints an entry for every extruder.
 
 #### LIST_FILAMENTS
-`LIST_FILAMENTS`: Prints all filament presets to the console keyed by the
-filament name.
+`LIST_FILAMENTS`: Prints all filament presets to the console in the order they
+were created.
 
 #### PREHEAT_EXTRUDER
 `PREHEAT_EXTRUDER T<index>` Heat the extruder to the configured extruder
@@ -116,19 +116,21 @@ of the extruder and is only required for multi-tool printers.
 ## filaments
 The following information is available in the `filaments` object:
 - `extruders`: A dictionary of the extruders in the printer. The key is the 
-  extruder name. The value is a filament preset dictionary containing the
-  following keys:
+  extruder name. If no filament is assigned to the extruder the value will be
+  `None`. If a filament is assigned the value is a filament preset dictionary 
+  containing the following keys:
   - `name`: The name of the filament preset.
   - `extruder`: The temperature of the extruder.
   - `bed`: The temperature of the extruder.
-  If other keys were provided to SETUP_FILAMENT these will also be included.
-  If no filament is assigned to th extruder the value will be `None`.
+  - custom keys: If custom keys were provided to SETUP_FILAMENT these will also
+  be included.
 - `profiles`: This is a list of all filament presets. Each entry is a filament 
   preset dictionary containing the following keys:
   - `name`: The name of the filament preset.
   - `extruder`: The temperature of the extruder.
   - `bed`: The temperature of the extruder.
-  If other keys were provided to SETUP_FILAMENT these will also be included
+  - custom keys: If custom keys were provided to SETUP_FILAMENT these will also
+  be included.
 
 # Use Cases
 
@@ -245,13 +247,8 @@ Put that gcode in a file in the [virtial_sdcard] folder and call it
 
 ```
 [gcode_macro START_PA_CAL]
-description: print a Pressure Advance test pattern
-variable_parameter_EXTRUSION_FACTOR: 100
-variable_parameter_NOZZLE: 0.4
+description: Print a Pressure Advance test pattern
 gcode:
-    {% set extruder_temp = params.EXTRUDER_TEMP | default(240) %}
-    {% set nozzle = params.NOZZLE | default(0.4) %}
-
     # configure pressure advance
     SET_GCODE_VARIABLE MACRO=PA_CAL VARIABLE=extrusion_factor VALUE={extrusion_factor}
     SET_GCODE_VARIABLE MACRO=PA_CAL VARIABLE=nozzle VALUE={nozzle}
