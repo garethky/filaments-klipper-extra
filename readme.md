@@ -255,3 +255,37 @@ Now the macro runs as a print rather than as a macro so it can be paused
 or canceled. Most of the front ends will present a nice UI for entering these
 additional parameters. We should expect a lot more re-usable calibration macros 
 using this technique.
+
+## Reacting to Filament Changes
+
+All of the klipper front ends allow you to run custom gcode when a preset is
+selected. But they don't pass any context information about the filament change
+so this feature is of limited value. Instead of this gode per-preset approach, 
+[filaments] supports 2 macros that are triggered when a filament is set or unset.
+These macros get passed useful context information about the filament change
+including the extruder, new filament preset and previous filament preset.
+
+Here is an example of using these macros just to print out that information:
+
+```
+[filaments]
+on_set_gcode: 
+    {action_respond_info("Filament Set. extruder: %s, T=%i, preset: %s, last_preset: %s" % (params.EXTRUDER, params.T, params.PRESET | string, params.LAST_PRESET | string))}
+on_unset_gcode:
+    {action_respond_info("Filament Unset. extruder: %s, T=%i, last_preset: %s" % (params.EXTRUDER, params.T, params.LAST_PRESET | string))}
+```
+
+sample output:
+```
+$ SET_FILAMENT NAME=PETG
+// Filament Set. extruder: extruder, T=0, preset: {'name': 'PETG', 'extruder': 280.0, 'bed': 90.0}, last_preset: None
+$ SET_FILAMENT NAME=PLA
+// Filament Set. extruder: extruder, T=0, preset: {'name': 'PLA', 'extruder': 215.5, 'bed': 45.0}, last_preset: {'name': 'PETG', 'extruder': 280.0, 'bed': 90.0}
+$ UNSET_FILAMENT
+// Filament Unset. extruder: extruder, T=0, last_preset: {'name': 'PLA', 'extruder': 215.5, 'bed': 45.0}
+```
+
+I'm not super familiar with what people are using these gcode blocks for but
+hopefully this is more useful and maintainable. this also has the benefit of
+working across all front ends hooked up to klipper without having to copy your
+gcode to multiple places.
