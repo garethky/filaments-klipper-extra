@@ -1,4 +1,4 @@
-# Klipper plugin for tracking Filaments assigned to an Extruder
+# Klipper plugin for tracking Filaments preset assigned to an Extruder
 #
 # Copyright (C) 2022-2023  Gareth Farrington <gareth@waves.ky>
 #
@@ -14,11 +14,12 @@ class FilamentPresets:
         self.reactor = self.printer.get_reactor()
         self.save_vars = self.printer.lookup_object('save_variables')
         self.gcode = self.printer.lookup_object('gcode')
+
         # gcode macros in config:
         gcode_macro = self.printer.load_object(config, 'gcode_macro')
-        self._on_set_macro = gcode_macro.load_template(config, 'on_set_macro')
+        self._on_set_macro = gcode_macro.load_template(config, 'on_set_gcode')
         self._on_unset_macro = gcode_macro.load_template(config,
-                                                            'on_unset_macro')
+                                                            'on_unset_gcode')
         # read presets from save_vars
         self._assignments = self._setup_assignments()
         self._presets = self._load_filaments()
@@ -27,7 +28,7 @@ class FilamentPresets:
     def _call_macro(self, macro, macro_params):
         context = macro.create_template_context()
         context['params'] = macro_params
-        self.template.run_gcode_from_command(context)
+        macro.run_gcode_from_command(context)
 
     def _register_commands(self, gcode):
         # Filament preset manipulation command
@@ -86,14 +87,11 @@ class FilamentPresets:
 
         # go through _presets and find ones that are assigned to an extruder
         for preset in self._presets:
-            if not self._assigned_to_key in preset or not len(preset[self._assigned_to_key]):
-                continue
-            for extruder in preset[self._assigned_to_key]:
-                if extruder in assignments.keys():
-                    # copy the preset and delete the extruders key
-                    preset_copy = copy.deepcopy(preset)
-                    preset_copy.pop(self._assigned_to_key, None)
-                    assignments[extruder] = preset_copy
+            for extruder in preset[self.assigned_to_key]:
+                # copy the preset and delete the extruders key
+                preset_copy = copy.deepcopy(preset)
+                preset_copy.pop(self.assigned_to_key, None)
+                assignments[extruder] = preset_copy
         return assignments
 
     def _load_filaments(self):
@@ -105,18 +103,47 @@ class FilamentPresets:
         if not 'filaments' in vars:
             logging.info("No filaments found in [save_variables]")
             return presets
-        
         # TODO: as much or as little validation as desired...
-        # maybe we should make sure that all the protected key set exists...
-
-        return vars['filaments']
+        # save_variables can be edited by hand, I dont want to delete someones
+        # work because I cant parse it. Prefer failing on unexpected value:
+        presets = vars['filaments']
+        if not presets or not type(presets) is list:
+            raise ValueError("'filaments' is not an array")
+        names = {}
+        for preset in presets:
+            # fail on items that dont look like a preset
+            if (not type(preset) is dict) or (not preset[self.name_key]):
+                raise ValueError("Item '%s' is not a valid Filament Preset" 
+                                        % (str(preset),))
+            name = preset[self.name_key]
+            # presets must have a name thats a string at least 2 chars long
+            if not type(name) is str:
+                raise ValueError("Filament name '%s' is not a string"
+                                             % (str(name),))
+            if len(name.strip()) < 2:
+                raise ValueError("Filament name '%s' is too short"
+                                             % (name,))
+            # fail on duplicate names
+            lower_name = name.strip().lower()
+            if lower_name in names:
+                raise ValueError("Multiple Filament Presets with the name '%s'"
+                                             % (name,))
+            names[lower_name] = True
+            # name sure all required keys are attached
+            for key, value in self.preset_defaults.items():
+                if not key in preset:
+                    preset[key] = value
+        return presets
     
-    # check that 
-    def _validate_name(self, gcmd, name):
-        if not name:
+    # check that a preset name is valid
+    def _validate_name_param(self, gcmd):
+        name = gcmd.get('NAME', default=None)
+        if not name or not type(name) is str or not name.strip():
             raise gcmd.error("No NAME provided, one is required")
+        name = name.strip()
         if len(name) < 2:
             raise gcmd.error("NAME must be at least 2 characters")
+        return name
 
     # output presets and assignment data to [save_variables]
     def _save_presets(self):
@@ -148,19 +175,18 @@ class FilamentPresets:
     def _remove_extruder(self, presets, extruder):
         last_preset = None
         for preset in presets:
-            if self._assigned_to_key in preset and extruder in preset[self._assigned_to_key]:
+            if extruder in preset[self.assigned_to_key]:
                 last_preset = preset
-                preset[self._assigned_to_key].remove(extruder)
+                preset[self.assigned_to_key].remove(extruder)
         return last_preset
 
     # find a preset by name and pop it from the list
-    def _pop_preset(self, presets, name):
+    def _find_preset(self, name):
         lower_name = name.lower()
-        for preset in presets:
-            if not preset['name'].lower() == lower_name:
+        for preset in self._presets:
+            if not preset[self.name_key].lower() == lower_name:
                 continue
             found_preset = preset
-            self._presets.remove(preset)
             return found_preset
     
     # common variable unpacking and validation code for the heating functions
@@ -191,24 +217,23 @@ class FilamentPresets:
         assignments = self._build_assignment_map()
         presets = copy.deepcopy(self._presets)
         for preset in presets:
-            preset.pop(self._assigned_to_key, None)
+            preset.pop(self.assigned_to_key, None)
         return {
-            self._assigned_to_key: assignments,
+            self.assigned_to_key: assignments,
             'presets': presets
         }
 
     cmd_SETUP_FILAMENT_help = "SETUP_FILAMENT"
     def cmd_SETUP_FILAMENT(self, gcmd):
-        name = gcmd.get('NAME', default=None)
-        self._validate_name(gcmd, name)
+        name = self._validate_name_param(gcmd)
         # find an existing preset with that name:
-        preset = self._pop_preset(self._presets, name)
+        preset = self._find_preset(name)
         # if this is a new preset, initialize defaults:
         if preset is None:
             preset = copy.deepcopy(self.preset_defaults)
+            self._presets.append(preset)
         # always overwrite the name to allow for capitalization changes
         preset[self.name_key] = name
-
         # get temp params
         extruder = gcmd.get_float('EXTRUDER', default=None)
         if not extruder is None:
@@ -216,20 +241,21 @@ class FilamentPresets:
         bed = gcmd.get_float('BED', default=None)
         if not bed is None:
             preset[self.bed_key] = bed
-        
-        # bring over any additional parameters passed and store them in the preset
+        # store any additional parameters
         self._copy_extra_fields(gcmd, preset)
         # save preset
-        self._presets.append(preset)
         self._save_presets()
         gcmd.respond_info("%s - %.0f/%.0f" %
-                (preset['name'], preset['extruder'], preset['bed']))
+                (preset[self.name_key],
+                 preset[self.extruder_key],
+                 preset[self.bed_key]))
 
     cmd_DELETE_FILAMENT_help = "DELETE_FILAMENT"
     def cmd_DELETE_FILAMENT(self, gcmd):
-        name = gcmd.get('NAME', default=None)
-        self._validate_name(gcmd, name)
-        self._pop_preset(self._presets, name)
+        name = self._validate_name_param(gcmd)
+        preset = self._find_preset(name)
+        if preset:
+            self._presets.remove(preset)
         self._save_presets()
     
     cmd_LIST_FILAMENTS_help = "LIST_FILAMENTS"
@@ -237,7 +263,9 @@ class FilamentPresets:
         preset_str = list()
         for preset in self._presets:
             preset_str.append("%s - %.0f/%.0f" % 
-                (preset['name'], preset['extruder'], preset['bed']))
+                (preset[self.name_key],
+                 preset[self.extruder_key],
+                 preset[self.bed_key]))
         if len(preset_str) > 0:
             gcmd.respond_info('\n'.join(preset_str))
         else:
@@ -252,58 +280,62 @@ class FilamentPresets:
             else:
                 preset = assignments['extruder']
                 gcmd.respond_info("%s - %.0f/%.0f" %
-                    (preset['name'], preset['extruder'], preset['bed']))
+                    (preset[self.name_key],
+                    preset[self.extruder_key],
+                    preset[self.bed_key]))
         else:
             for extruder, preset in assignments:
                 if preset is None:
                     gcmd.respond_info("%s: -" % (extruder))
                 gcmd.respond_info("%s: %s - %.0f/%.0f" %
-                    (extruder, preset['name'], preset['extruder'],
-                     preset['bed']))
+                    (extruder, preset[self.name_key],
+                 preset[self.extruder_key],
+                 preset[self.bed_key]))
     
     cmd_SET_FILAMENT_help = "SET_FILAMENT"
     def cmd_SET_FILAMENT(self, gcmd):
-        name = gcmd.get('NAME', default=None)
-        self._validate_name(gcmd, name)
+        name = self._validate_name_param(gcmd)
         lower_name = name.lower()
         extruder, extruder_index = self._get_extruder_arg(gcmd)
 
         # go through the list of presets and look for the one that matches:
         filament_preset = None
         for preset in self._presets:
-            if preset['name'].lower() == lower_name:
+            if preset[self.name_key].lower() == lower_name:
                 filament_preset = preset
                 break
         
         if filament_preset is None:
             raise gcmd.error("No filament preset named '%s' could be found" % (name))
+        filament_preset = copy.deepcopy(filament_preset)
+        filament_preset.pop(self.assigned_to_key, None)
         
         # wipe the extruder from the presets
         last_preset = self._remove_extruder(self._presets, extruder)
+        last_preset = copy.deepcopy(last_preset)
+        last_preset.pop(self.assigned_to_key, None)
 
         # add the extruder to the list of extruders on the selected preset
-        if not self._assigned_to_key in filament_preset:
-            filament_preset[self._assigned_to_key] = list()
-        filament_preset[self._assigned_to_key].append(extruder)
+        filament_preset[self.assigned_to_key].append(extruder)
         self._save_presets()
         self._call_macro(self._on_set_macro, {
-            self.extruder_key: extruder,
-            'extruder_index': extruder_index,
-            'preset': preset,
-            'last_preset': last_preset
+            'EXTRUDER': extruder,
+            'T': extruder_index,
+            'PRESET': preset,
+            'LAST_PRESET': last_preset
         })
     
     cmd_UNSET_FILAMENT_help = "UNSET_FILAMENT"
     def cmd_UNSET_FILAMENT(self, gcmd):
-        name = gcmd.get('NAME', default=None)
-        self._validate_name(gcmd, name)
         extruder, extruder_index = self._get_extruder_arg(gcmd)
         last_preset = self._remove_extruder(self._presets, extruder)
+        last_preset = copy.deepcopy(last_preset)
+        last_preset.pop(self.assigned_to_key, None)
         self._save_presets()
         self._call_macro(self._on_unset_macro, {
-            self.extruder_key: extruder,
-            'extruder_index': extruder_index,
-            'last_preset': last_preset
+            'EXTRUDER': extruder,
+            'T': extruder_index,
+            'LAST_PRESET': last_preset
         })
 
     cmd_PREHEAT_help = "PREHEAT"
@@ -315,7 +347,7 @@ class FilamentPresets:
     def cmd_PREHEAT_EXTRUDER(self, gcmd):
         extruder, tool_index, preset = self._heat_cmd_preamble(gcmd)
         gcmd_save = self.gcode.create_gcode_command("M104", "M104", { 
-                            'S': preset['extruder'],
+                            'S': preset[self.extruder_key],
                             'T': tool_index
                         })
         printer_extruder = self.printer.lookup_object(extruder)
@@ -325,7 +357,7 @@ class FilamentPresets:
     def cmd_PREHEAT_BED(self, gcmd):
         _, _, preset = self._heat_cmd_preamble(gcmd)
         gcmd_save = self.gcode.create_gcode_command("M140", "M140", { 
-                            'S': preset['bed'],
+                            'S': preset[self.bed_key],
                         })
         heater_bed = self.printer.lookup_object("heater_bed")
         heater_bed.cmd_M140(gcmd_save)
@@ -342,7 +374,7 @@ class FilamentPresets:
     def cmd_HEAT_EXTRUDER_AND_WAIT(self, gcmd):
         extruder, tool_index, preset = self._heat_cmd_preamble(gcmd)
         gcmd_save = self.gcode.create_gcode_command("M109", "M109", { 
-                            'S': preset['extruder'],
+                            'S': preset[self.extruder_key],
                             'T': tool_index
                         })
         printer_extruder = self.printer.lookup_object(extruder)
@@ -352,7 +384,7 @@ class FilamentPresets:
     def cmd_HEAT_BED_AND_WAIT(self, gcmd):
         _, _, preset = self._heat_cmd_preamble(gcmd)
         gcmd_save = self.gcode.create_gcode_command("M190", "M190", { 
-                            'S': preset['bed'],
+                            'S': preset[self.bed_key],
                         })
         heater_bed = self.printer.lookup_object("heater_bed")
         heater_bed.cmd_M190(gcmd_save)

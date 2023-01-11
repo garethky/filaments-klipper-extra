@@ -1,4 +1,15 @@
+# ⚠️⚠️⚠️ WARNING ⚠️⚠️⚠️
+Status: Alpha
+This is new code and is not heavily tested. In particular I haven't tested the multi-tool code paths.
+Please file bugs on github.
+
+If you are interested in more general discussion join this thread: https://klipper.discourse.group/t/assigning-a-filament-aka-thermal-preset-to-an-extruder/5849
+
+----
+
 # Filaments - Filament Presets for Klipper
+
+----
 
 # Config Reference
 
@@ -11,17 +22,19 @@ Filament Presets. Associate a filament preset with each extruder, manage presets
 #on_set_gcode:
 #   A list of G-Code commands to execute after the SET_FILAMENT macro runs. See
 #   docs/Command_Templates.md for G-Code format. These parameters are pass to the gcode:
-#   * 'extruder' - the name of the extruder. 'extruder', 'extruder1' etc.
-#   * 'extruder_index' - the integer index of the extruder
-#   * 'preset' - the filament preset that was just assigned t th extruder
-#   * 'last_preset' - the filament preset that was previously assigned to the extruder, if any
+#   * 'EXTRUDER' - the name of the extruder. 'extruder', 'extruder1' etc.
+#   * 'T' - the integer index of the extruder
+#   * 'PRESET' - the filament preset that was just assigned t th extruder
+#   * 'LAST_PRESET' - the filament preset that was previously assigned to the extruder, if any
 #on_unset_gcode:
 #   A list of G-Code commands to execute after the UNSET_FILAMENT macro runs. See
 #   docs/Command_Templates.md for G-Code format. These parameters are pass to the gcode:
-#   * 'extruder' - the name of the extruder. 'extruder', 'extruder1' etc.
-#   * 'extruder_index' - the integer index of the extruder
-#   * 'last_preset' - the filament preset that was previously assigned to the extruder, if any
+#   * 'EXTRUDER' - the name of the extruder. 'extruder', 'extruder1' etc.
+#   * 'T' - the integer index of the extruder
+#   * 'LAST_PRESET' - the filament preset that was previously assigned to the extruder, if any
 ```
+
+----
 
 # G-Code Commands
 These commands handle basic tasks for filament presets
@@ -95,6 +108,8 @@ printers.
 `HEAT_AND_WAIT T<index>` perform heat and wait for both extruder and bed. Will
 throw an error if no filament preset is assigned.  The T parameter is the index
 of the extruder and is only required for multi-tool printers.
+
+----
 
 # Status Reference
 
