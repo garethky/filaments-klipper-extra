@@ -162,17 +162,17 @@ class FilamentPresets:
         # save_variables can be edited by hand, I dont want to delete someones
         # work because I cant parse it. Prefer failing on unexpected value:
         presets = svv['filaments']
-        if not presets or not type(presets) is list:
+        if not presets or not isinstance(presets, list):
             raise ValueError("'filaments' is not an array")
         names = {}
         for preset in presets:
             # fail on items that dont look like a preset
-            if (not type(preset) is dict) or (not preset[self.name_key]):
-                raise ValueError("Item '%s' is not a valid Filament Preset" 
+            if not isinstance(preset, dict) or (not preset[self.name_key]):
+                raise ValueError("Item '%s' is not a valid Filament Preset"
                                         % (str(preset),))
             name = preset[self.name_key]
             # presets must have a name thats a string at least 2 chars long
-            if not type(name) is str:
+            if not isinstance(name, str):
                 raise ValueError("Filament name '%s' is not a string"
                                              % (str(name),))
             if len(name.strip()) < 2:
@@ -181,7 +181,7 @@ class FilamentPresets:
             # fail on duplicate names
             lower_name = name.strip().lower()
             if lower_name in names:
-                raise ValueError("Multiple Filament Presets with the name '%s'"
+                raise ValueError("Multiple filament presets with the name '%s'"
                                              % (name,))
             names[lower_name] = True
             # name sure all required keys are attached
