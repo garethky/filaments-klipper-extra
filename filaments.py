@@ -19,9 +19,9 @@ class FilamentPresets:
         # gcode macros in config:
         gcode_macro = self.printer.load_object(config, 'gcode_macro')
         self._on_set_filament_macro = gcode_macro.load_template(config,
-                                'on_set_filament_gcode', '')
+                                'on_set_filament_gcode')
         self._on_clear_filament_macro = gcode_macro.load_template(config,
-                                'on_clear_filament_gcode', '')
+                                'on_clear_filament_gcode')
         # read presets from save_vars
         self._extruder_names = self._get_extruder_names()
         self._presets = self._load_filaments()
