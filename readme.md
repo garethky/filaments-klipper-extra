@@ -75,15 +75,15 @@ The following commands are available when a
 [filaments config section](#filaments) is enabled.
 
 #### SETUP_FILAMENT
-`SETUP_FILAMENT [NAME=<value>] [EXTRUDER=<extruder_temp>] [BED=<bed_temp>]`: 
-Create or update a filament preset. The NAME argument is required and must be at least 2 characters long. EXTRUDER and BED are floating point numbers. You can  pass any number of additional parameters and these will be stored in the filament preset. The values of these parameters can be any valid Python literal. The names must be valid python dictionary keys. Dictionary keys will be stored in lower case. Fields in the preset are overwritten if new values are provided but otherwise preserved.
+`SETUP_FILAMENT NAME=<value> [EXTRUDER=<extruder_temp>] [BED=<bed_temp>] [PROPERTY_NAME=<python_literal>]`: 
+Create or update a filament preset. The NAME argument is required and must be at least 2 characters long. EXTRUDER and BED are floating point numbers. Any number of additional properties can be added and these will be stored in the filament preset. The values of these parameters can be any valid Python literal. The names must be valid python dictionary keys. Dictionary keys will be stored in lower case. Fields in the preset are overwritten if new values are provided but otherwise preserved.
 
 #### DELETE_FILAMENT
-`DELETE_FILAMENT [NAME=<value>]` Delete a filament preset. The NAME argument is
+`DELETE_FILAMENT NAME=<value>` Delete a filament preset. The NAME argument is
 required.
 
 #### SET_FILAMENT
-`SET_FILAMENT [NAME=<value>] [EXTRUDER=<extruder>]`: Associate the filament preset with the extruder. The NAME parameter is required. The EXTRUDER parameter is the name of the extruder and is optional. The active extruder is used by default.
+`SET_FILAMENT NAME=<value> [EXTRUDER=<extruder>]`: Associate the filament preset with the extruder. The NAME parameter is required. The EXTRUDER parameter is the name of the extruder and is optional. The active extruder is used by default.
 
 #### CLEAR_FILAMENT
 `CLEAR_FILAMENT [EXTRUDER=<extruder>]`: Disassociate the extruder from the current filament preset, if any. The EXTRUDER parameter is the name of the extruder and is optional. The active extruder is used by default.
@@ -155,6 +155,26 @@ Once set, filament presets and assignments are remembered across printer restart
 The order in which filaments are created with `SETUP_FILAMENT` is preserved. This might be a good ordering to display filament in a front end as it could represent a user's preferred ordering (i.e. most often used filaments first).
 
 Filament names are case preserving but case insensitive. `pla` and `PLA` refer to the same preset but will be displayed as written. Whenever you run `SETUP_FILAMENT` the case you set in the `NAME` parameter is saved.
+
+## Adding Additional Filament Properties
+Each filament preset can have additional custom properties saved with it. For example, you can store a chamber temperature with the filament:
+
+```
+SETUP_FILAMENT NAME=ASA EXTRUDER=260 BED=100 CHAMBER=50
+```
+
+Property names need to be valid python dictionary keys. The values can be any python literal (strings, numbers, booleans, arrays and dictionaries all work). Custom properties can be updated after the filament is created. Only the properties you want to change need to be passed in:
+
+```
+SETUP_FILAMENT NAME=ASA CHAMBER=40
+```
+
+Custom properties can be accessed in macros as properties of the filament object:
+
+```
+{printer.extruder.filament.chamber}
+```
+
 
 ## Filament Loading & Unloading
 A common FDM printer task is loading and unloading filament. With an assigned filament you can add a `HEAT_EXTRUDER_AND_WAIT` command to your macros to get the extruder up to temp before moving the extruder. e.g. using the sample macro from [Klipper Screen](https://klipperscreen.readthedocs.io/en/latest/macros/#load_filament-unload_filament)
