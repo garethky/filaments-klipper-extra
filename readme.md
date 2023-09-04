@@ -42,6 +42,7 @@ managed_services: klipper
 ----
 
 # Config Reference
+This extra requires that you have [save_variables] set up. If you don't it will throw an exception on startup. See [documentation](https://www.klipper3d.org/Config_Reference.html#save_variables).
 
 ## [filaments]
 
