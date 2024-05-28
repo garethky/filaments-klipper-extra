@@ -161,10 +161,10 @@ Filament names are case preserving but case insensitive. `pla` and `PLA` refer t
 Each filament preset can have additional custom properties saved with it. For example, you can store a chamber temperature with the filament:
 
 ```
-SETUP_FILAMENT NAME=ASA EXTRUDER=260 BED=100 CHAMBER=50
+SETUP_FILAMENT NAME=ASA EXTRUDER=260 BED=100 CHAMBER=50 PID_PROFILE="'ABS'"
 ```
 
-Property names need to be valid python dictionary keys. The values can be any python literal (strings, numbers, booleans, arrays and dictionaries all work). Custom properties can be updated after the filament is created. Only the properties you want to change need to be passed in:
+Property names need to be valid python dictionary keys. The values can be any python literal (strings, numbers, booleans, arrays and dictionaries all work). Literals that are not numbers need to be wrapped in quotes, e.g. `MY_TEXT="'some string'"`. Custom properties can be updated after the filament is created. Only the properties you want to change need to be passed in:
 
 ```
 SETUP_FILAMENT NAME=ASA CHAMBER=40
