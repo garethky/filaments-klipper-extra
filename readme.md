@@ -288,3 +288,47 @@ $ CLEAR_FILAMENT
 
 I'm not super familiar with what people are using the gcode blocks in the existing front ends for but hopefully this is more useful and maintainable. This also has the benefit of
 working across all front ends hooked up to klipper without having to copy your gcode to multiple places. Feedback is welcome.
+
+### Putting the additional properties to use
+
+Here is an example of the on_set_filament_gcode macro that automatically sets the extrusion factor and pressure advance using this setup_filament command:
+
+```
+SETUP_FILAMENT NAME=PLA EXTRUDER=220 BED=60 EXTRUSION_FACTOR=98 PA=0.02 PA_SMOOTH=0.01
+```
+
+```
+[filaments]
+on_set_filament_gcode: 
+    {action_respond_info("Filament Set. extruder: %s, T=%i, preset: %s, last_preset: %s" % (params.EXTRUDER, params.T, params.PRESET | string, params.LAST_PRESET | string))} # Printing all Information
+    {% set ext_name = params.EXTRUDER %}                # Setting Extruder Variables
+    {% set current_ext = printer.toolhead.extruder %}
+    {% set filament = printer[ext_name].filament %}
+
+    {% set factor = filament.extrusion_factor|default(none) %}  # Setting Variables for the additional properties
+    {% set pa = filament.pa|default(none) %}
+    {% set pa_smooth = filament.pa_smooth|default(none) %}
+
+    {% if ext_name != current_ext %}ACTIVATE_EXTRUDER EXTRUDER={ext_name}{% endif %}  # Give the settings to the selected extruder if it isn't the active (or only) one
+
+    {% if factor is not none %}
+        {% set percent = (factor * 100)|int if factor <= 10 else factor|int %}  # Works with percentages and float values
+        M221 S{percent}
+        {action_respond_info("Extrusion factor set to %d%% for filament %s" % (percent, filament.name))}
+    {% else %}
+        M221 S100
+        {action_respond_info("No extrusion factor defined for filament %s (using 100%% flow)" % filament.name)}
+    {% endif %}
+
+    {% if pa is not none %}
+        SET_PRESSURE_ADVANCE ADVANCE={pa}
+        {action_respond_info("Pressure advance set to %.4f for filament %s" % (pa, filament.name))}
+    {% endif %}
+
+    {% if pa_smooth is not none %}
+        SET_PRESSURE_ADVANCE ADVANCE={pa} SMOOTH_TIME={pa_smooth}
+        {action_respond_info("Pressure advance smooth time set to %.4f for filament %s" % (pa_smooth, filament.name))}
+    {% endif %}
+
+    {% if ext_name != current_ext %}ACTIVATE_EXTRUDER EXTRUDER={current_ext}{% endif %}  # reactivates the previously active extruder after applying the filament settings
+```
