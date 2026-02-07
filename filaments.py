@@ -20,10 +20,8 @@ class FilamentPresets:
         gcode_macro = self.printer.load_object(config, 'gcode_macro')
         self._on_set_filament_macro = gcode_macro.load_template(config,
                                 'on_set_filament_gcode', "")
-        logging.info('GCode macro loaded', self._on_set_filament_macro)
         self._on_clear_filament_macro = gcode_macro.load_template(config,
                                 'on_clear_filament_gcode', "")
-        logging.info("GCode macro loaded", self._on_clear_filament_macro)
         # read presets from save_vars
         self._extruder_names = self._get_extruder_names()
         self._presets = self._load_filaments()
@@ -205,7 +203,7 @@ class FilamentPresets:
     # output presets and assignment data to [save_variables]
     def _save_presets(self):
         gcmd_save = self.gcode.create_gcode_command("SAVE_VARIABLE",
-                        "SAVE_VARIABLE", { 
+                        "SAVE_VARIABLE", {
                             'VARIABLE': 'filaments',
                             'VALUE': str(self._presets)
                         })
